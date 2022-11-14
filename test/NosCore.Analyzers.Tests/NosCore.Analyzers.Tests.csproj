@@ -15,7 +15,7 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing.MSTest" Version="1.1.1" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing.MSTest" Version="1.1.1" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.CodeRefactoring.Testing.MSTest" Version="1.1.1" />
-    <PackageReference Include="NosCore.Packets" Version="13.0.0" />
+    <PackageReference Include="NosCore.Packets" Version="14.0.1" />
   </ItemGroup>
 
   <ItemGroup>
