@@ -6,8 +6,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
-using Microsoft.CodeAnalysis.FindSymbols;
-using Microsoft.CodeAnalysis.Operations;
 
 namespace NosCore.Analyzers.Analyzers
 {
@@ -66,7 +64,7 @@ namespace NosCore.Analyzers.Analyzers
                 var fields = enumType?.GetMembers().Where(m => m.Kind == SymbolKind.Field).OfType<IFieldSymbol>().ToList();
                 var field = fields?.FirstOrDefault(x => x.Name == enumValue?.Name.ToString()) ?? fields?.First() ?? throw new ArgumentException();
                 var attribute = field.GetAttributes().FirstOrDefault(x => x.AttributeClass?.Name == "Game18NArgumentsAttribute");
-                arguments.AddRange(attribute?.ConstructorArguments.First().Values.Where(x=>x.Value != null).Select(x => x.Value!.ToString()) ?? new List<string>());
+                arguments.AddRange(attribute?.ConstructorArguments.First().Values.Where(x=>x.Value != null).Select(x => x.Value!.ToString()).Where(x => x != null).Cast<string>() ?? new List<string>());
             }
 
             var error = false;
