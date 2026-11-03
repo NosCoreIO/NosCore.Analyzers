@@ -28,7 +28,7 @@ namespace NosCore.Analyzers.Analyzers
             isEnabledByDefault: true,
             description: "A log message with fewer arguments than placeholders throws a FormatException when it is written; extra arguments are silently dropped.");
 
-        private const string LocalizerInterface = "ILogLanguageLocalizer";
+        private const string LocalizerInterface = "NosCore.Shared.I18N.ILogLanguageLocalizer<T>";
         private const string LoggerExtensions = "Microsoft.Extensions.Logging.LoggerExtensions";
 
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
@@ -49,21 +49,22 @@ namespace NosCore.Analyzers.Analyzers
             });
         }
 
-        private static void Analyze(OperationAnalysisContext context, IReadOnlyDictionary<string, int> placeholders)
+        private static void Analyze(OperationAnalysisContext context, IReadOnlyDictionary<string, Placeholders> placeholders)
         {
             var reference = (IPropertyReferenceOperation)context.Operation;
             if (!reference.Property.IsIndexer || !IsLogLanguageLocalizer(reference.Property.ContainingType)
                 || reference.Arguments.Length == 0
                 || reference.Arguments[0].Value is not IFieldReferenceOperation key
                 || key.Field.ContainingType.TypeKind != TypeKind.Enum
-                || !placeholders.TryGetValue(key.Field.Name, out var expected))
+                || !placeholders.TryGetValue(key.Field.Name, out var text))
             {
                 return;
             }
 
-            var given = reference.Arguments.Length > 1
-                ? CountArguments(reference.Arguments.Skip(1))
+            var (given, isLog) = reference.Arguments.Length > 1
+                ? (CountArguments(reference.Arguments.Skip(1)), false)
                 : CountConsumerArguments(reference);
+            var expected = isLog ? text.Occurrences : text.FormatArguments;
             if (given is { } count && count != expected)
             {
                 context.ReportDiagnostic(Diagnostic.Create(Rule, reference.Syntax.GetLocation(),
@@ -72,9 +73,12 @@ namespace NosCore.Analyzers.Analyzers
         }
 
         private static bool IsLogLanguageLocalizer(INamedTypeSymbol type) =>
-            type.Name == LocalizerInterface || type.AllInterfaces.Any(i => i.Name == LocalizerInterface);
+            IsLocalizerInterface(type) || type.AllInterfaces.Any(IsLocalizerInterface);
 
-        private static int? CountConsumerArguments(IOperation template)
+        private static bool IsLocalizerInterface(INamedTypeSymbol type) =>
+            type.OriginalDefinition.ToDisplayString() == LocalizerInterface;
+
+        private static (int? Count, bool IsLog) CountConsumerArguments(IOperation template)
         {
             var current = template.Parent;
             while (current is IConversionOperation)
@@ -85,7 +89,7 @@ namespace NosCore.Analyzers.Analyzers
             if (current is not IArgumentOperation { Parameter: { } parameter } argument
                 || argument.Parent is not IInvocationOperation invocation)
             {
-                return null;
+                return (null, false);
             }
 
             var method = invocation.TargetMethod;
@@ -93,10 +97,10 @@ namespace NosCore.Analyzers.Analyzers
             var isLog = method.ContainingType.ToDisplayString() == LoggerExtensions && parameter.Name == "message";
             if (!isFormat && !isLog)
             {
-                return null;
+                return (null, false);
             }
 
-            return CountArguments(invocation.Arguments.Where(a => a.Parameter != null && a.Parameter.Ordinal > parameter.Ordinal));
+            return (CountArguments(invocation.Arguments.Where(a => a.Parameter != null && a.Parameter.Ordinal > parameter.Ordinal)), isLog);
         }
 
         private static int? CountArguments(IEnumerable<IArgumentOperation> arguments)
@@ -104,13 +108,24 @@ namespace NosCore.Analyzers.Analyzers
             var count = 0;
             foreach (var argument in arguments)
             {
-                if (argument.ArgumentKind == ArgumentKind.Explicit || argument.ArgumentKind == ArgumentKind.DefaultValue)
+                if (argument.ArgumentKind == ArgumentKind.DefaultValue)
                 {
-                    count += argument.ArgumentKind == ArgumentKind.Explicit ? 1 : 0;
                     continue;
                 }
 
-                switch (argument.Value)
+                if (argument.ArgumentKind == ArgumentKind.Explicit && argument.Parameter?.IsParams != true)
+                {
+                    count++;
+                    continue;
+                }
+
+                var value = argument.Value;
+                while (value is IConversionOperation conversion)
+                {
+                    value = conversion.Operand;
+                }
+
+                switch (value)
                 {
                     case IArrayCreationOperation { Initializer: { } initializer }:
                         count += initializer.ElementValues.Length;
@@ -130,9 +145,10 @@ namespace NosCore.Analyzers.Analyzers
             return count;
         }
 
-        private static IReadOnlyDictionary<string, int> ReadPlaceholders(ImmutableArray<AdditionalText> files, System.Threading.CancellationToken token)
+        private static IReadOnlyDictionary<string, Placeholders> ReadPlaceholders(ImmutableArray<AdditionalText> files, System.Threading.CancellationToken token)
         {
-            var result = new Dictionary<string, int>(StringComparer.Ordinal);
+            var result = new Dictionary<string, Placeholders>(StringComparer.Ordinal);
+            var conflicting = new HashSet<string>(StringComparer.Ordinal);
             foreach (var file in files.Where(f => IsNeutralResx(f.Path)))
             {
                 var text = file.GetText(token)?.ToString();
@@ -155,11 +171,24 @@ namespace NosCore.Analyzers.Analyzers
                 {
                     var name = data.Attribute("name")?.Value;
                     var value = data.Element("value")?.Value;
-                    if (name != null && value != null && data.Attribute("type") == null)
+                    if (name == null || value == null || data.Attribute("type") != null)
                     {
-                        result[name] = CountPlaceholders(value);
+                        continue;
                     }
+
+                    var placeholders = CountPlaceholders(value);
+                    if (result.TryGetValue(name, out var existing) && existing != placeholders)
+                    {
+                        conflicting.Add(name);
+                    }
+
+                    result[name] = placeholders;
                 }
+            }
+
+            foreach (var name in conflicting)
+            {
+                result.Remove(name);
             }
 
             return result;
@@ -174,12 +203,41 @@ namespace NosCore.Analyzers.Analyzers
 
             var culture = Path.GetExtension(Path.GetFileNameWithoutExtension(path)).TrimStart('.');
             var language = culture.Split('-')[0];
-            return !(language.Length is 2 or 3 && language.All(char.IsLetter) && culture.Length <= 10);
+            return !(language.Length is 2 or 3 && language.All(char.IsLetter));
         }
 
-        public static int CountPlaceholders(string text)
+        /// <summary>
+        /// The arguments a text needs: as a string.Format format, the highest index plus one (or the
+        /// number of distinct names); as a logger message template, one per placeholder occurrence.
+        /// </summary>
+        public readonly struct Placeholders : IEquatable<Placeholders>
         {
-            var names = new HashSet<string>(StringComparer.Ordinal);
+            public Placeholders(int formatArguments, int occurrences)
+            {
+                FormatArguments = formatArguments;
+                Occurrences = occurrences;
+            }
+
+            public int FormatArguments { get; }
+
+            public int Occurrences { get; }
+
+            public bool Equals(Placeholders other) => FormatArguments == other.FormatArguments && Occurrences == other.Occurrences;
+
+            public override bool Equals(object? obj) => obj is Placeholders other && Equals(other);
+
+            public override int GetHashCode() => FormatArguments * 397 ^ Occurrences;
+
+            public static bool operator ==(Placeholders left, Placeholders right) => left.Equals(right);
+
+            public static bool operator !=(Placeholders left, Placeholders right) => !left.Equals(right);
+
+            public override string ToString() => $"format {FormatArguments}, occurrences {Occurrences}";
+        }
+
+        public static Placeholders CountPlaceholders(string text)
+        {
+            var names = new List<string>();
             for (var i = 0; i < text.Length; i++)
             {
                 if (text[i] != '{')
@@ -205,9 +263,10 @@ namespace NosCore.Analyzers.Analyzers
                 i = end;
             }
 
-            return names.Count > 0 && names.All(n => int.TryParse(n, out _))
+            var format = names.Count > 0 && names.All(n => int.TryParse(n, out _))
                 ? names.Max(int.Parse) + 1
-                : names.Count;
+                : names.Distinct(StringComparer.Ordinal).Count();
+            return new Placeholders(format, names.Count);
         }
     }
 }

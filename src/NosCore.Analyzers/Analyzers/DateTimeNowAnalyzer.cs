@@ -35,6 +35,14 @@ namespace NosCore.Analyzers.Analyzers
 
         private static void Analyze(OperationAnalysisContext context, INamedTypeSymbol? dateTime, INamedTypeSymbol? dateTimeOffset)
         {
+            for (var parent = context.Operation.Parent; parent != null; parent = parent.Parent)
+            {
+                if (parent is INameOfOperation)
+                {
+                    return;
+                }
+            }
+
             var property = ((IPropertyReferenceOperation)context.Operation).Property;
             if (!property.IsStatic || property.Name is not ("Now" or "UtcNow" or "Today"))
             {

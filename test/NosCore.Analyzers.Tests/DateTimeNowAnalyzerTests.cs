@@ -32,6 +32,7 @@ public class Program
         [DataRow("DateTime.MinValue")]
         [DataRow("new DateTime(2020, 1, 1).Date")]
         [DataRow("DateTime.Now2")]
+        [DataRow("nameof(DateTime.Now)")]
         public async Task OtherDateTimeMembersAreNotReported(string expression)
         {
             var source = string.Format(Source, expression)
