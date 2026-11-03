@@ -4,3 +4,5 @@
 ### New Rules
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
+NosCoreDateTimeNow | Reliability | Warning | DateTimeNowAnalyzer
+NosCoreLogArguments | Usage | Warning | LogLanguageArgumentsAnalyzer
