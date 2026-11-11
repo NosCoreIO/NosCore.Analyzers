@@ -6,4 +6,4 @@ Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
 NosCoreDateTimeNow | Reliability | Warning | DateTimeNowAnalyzer
 NosCoreLogArguments | Usage | Warning | LogLanguageArgumentsAnalyzer
-NosCoreExpressionTreeNullForgiving | Style | Warning | ExpressionTreeNullForgivingAnalyzer
+NosCoreNullForgiving | Reliability | Warning | NullForgivingAnalyzer
