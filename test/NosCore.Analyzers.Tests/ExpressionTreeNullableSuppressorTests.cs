@@ -15,6 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore;
 
 public class Item {{ public string Name = """"; }}
 public class Row {{ public Item? Item; public int? VNum; }}
@@ -24,9 +25,22 @@ public class Program
     private static string NameOf(Item item) => item.Name;
     private static void Run(Expression<Func<Row, object>> selector) {{ }}
 
-    public void Query(IQueryable<Row> rows, IEnumerable<Row> list)
+    public void Query(IQueryable<Row> rows, IEnumerable<Row> list, NosCore.Dao.Interfaces.IDao<Row, int> dao)
     {{
         {0};
+    }}
+}}
+
+namespace NosCore.Dao.Interfaces
+{{
+    public interface IDao<TDto, in TPk> {{ IEnumerable<TDto>? Where(Expression<Func<TDto, bool>> predicate); }}
+}}
+
+namespace Microsoft.EntityFrameworkCore
+{{
+    public static class EntityFrameworkQueryableExtensions
+    {{
+        public static IQueryable<T> Include<T, TProperty>(this IQueryable<T> source, Expression<Func<T, TProperty>> path) => source;
     }}
 }}";
 
@@ -37,7 +51,7 @@ public class Program
             {
                 var column = 9 + index;
                 expected = [.. expected, DiagnosticResult.CompilerError(id)
-                    .WithSpan(17, column, 17, column + operand.Length)
+                    .WithSpan(18, column, 18, column + operand.Length)
                     .WithArguments(arguments)
                     .WithIsSuppressed(suppressed)];
             }
@@ -50,20 +64,21 @@ public class Program
         [DataRow("rows.Select(r => r.Item.Name.Length)")]
         [DataRow("rows.OrderBy(r => r.Item.Name).ThenBy(r => r.Item.Name.Length)")]
         [DataRow("rows.Where(o => list.Any(r => r.Item.Name == o.VNum.ToString()))")]
-        [DataRow("Run(r => r.Item.Name)")]
-        public async Task DereferenceInsideAnExpressionTreeIsSuppressed(string statement)
+        [DataRow("rows.Include(r => r.Item.Name)")]
+        [DataRow("dao.Where(r => r.Item.Name == \"a\")")]
+        public async Task DereferenceInsideAnEfQueryIsSuppressed(string statement)
         {
             await VerifyAsync(statement, "CS8602", "r.Item", true);
         }
 
         [TestMethod]
-        public async Task NullableValueAccessInsideAnExpressionTreeIsSuppressed()
+        public async Task NullableValueAccessInsideAnEfQueryIsSuppressed()
         {
             await VerifyAsync("rows.GroupBy(r => r.VNum.Value)", "CS8629", "r.VNum", true);
         }
 
         [TestMethod]
-        public async Task PossibleNullArgumentInsideAnExpressionTreeIsSuppressed()
+        public async Task PossibleNullArgumentInsideAnEfQueryIsSuppressed()
         {
             await VerifyAsync("rows.Select(r => NameOf(r.Item))", "CS8604", "r.Item", true, "item", "string Program.NameOf(Item item)");
         }
@@ -71,7 +86,9 @@ public class Program
         [DataTestMethod]
         [DataRow("list.Where(r => r.Item.Name == \"a\")")]
         [DataRow("rows.AsEnumerable().Select(r => r.Item.Name.Length)")]
-        public async Task DereferenceInADelegateIsStillReported(string statement)
+        [DataRow("Run(r => r.Item.Name)")]
+        [DataRow("Expression<Func<Row, int>> e = r => r.Item.Name.Length")]
+        public async Task DereferenceOutsideAnEfQueryIsStillReported(string statement)
         {
             await VerifyAsync(statement, "CS8602", "r.Item", false);
         }

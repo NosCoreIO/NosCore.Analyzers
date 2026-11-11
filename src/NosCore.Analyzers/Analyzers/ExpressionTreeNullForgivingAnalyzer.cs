@@ -13,12 +13,12 @@ namespace NosCore.Analyzers.Analyzers
 
         private static readonly DiagnosticDescriptor Rule = new(
             DiagnosticId,
-            "Do not use '!' inside an expression tree",
-            "'!' does nothing inside an expression tree; remove it",
+            "Do not use '!' inside an EF query",
+            "'!' does nothing inside an EF query; remove it",
             "Style",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
-            description: "Nullable dereference warnings are suppressed inside lambdas converted to expression trees, so a null-forgiving operator before a member access there is redundant.");
+            description: "Nullable dereference warnings are suppressed inside lambdas passed to Queryable, EF Core or IDao as expression trees, so a null-forgiving operator before a member access there is redundant.");
 
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
 
@@ -28,15 +28,12 @@ namespace NosCore.Analyzers.Analyzers
             context.EnableConcurrentExecution();
             context.RegisterCompilationStartAction(start =>
             {
-                var lambdaExpression = start.Compilation.GetTypeByMetadataName("System.Linq.Expressions.LambdaExpression");
-                if (lambdaExpression != null)
-                {
-                    start.RegisterSyntaxNodeAction(node => Analyze(node, lambdaExpression), SyntaxKind.SuppressNullableWarningExpression);
-                }
+                var efQuery = new EfQueryLambda(start.Compilation);
+                start.RegisterSyntaxNodeAction(node => Analyze(node, efQuery), SyntaxKind.SuppressNullableWarningExpression);
             });
         }
 
-        private static void Analyze(SyntaxNodeAnalysisContext context, INamedTypeSymbol lambdaExpression)
+        private static void Analyze(SyntaxNodeAnalysisContext context, EfQueryLambda efQuery)
         {
             var forgiving = (PostfixUnaryExpressionSyntax)context.Node;
             var isReceiver = forgiving.Parent switch
@@ -45,7 +42,7 @@ namespace NosCore.Analyzers.Analyzers
                 ElementAccessExpressionSyntax access => access.Expression == forgiving,
                 _ => false,
             };
-            if (!isReceiver || !ExpressionTreeLambda.IsInside(forgiving, context.SemanticModel, lambdaExpression))
+            if (!isReceiver || !efQuery.IsInside(forgiving, context.SemanticModel))
             {
                 return;
             }
