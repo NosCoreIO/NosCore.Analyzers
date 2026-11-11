@@ -6,8 +6,9 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace NosCore.Analyzers.Analyzers
 {
     /// <summary>
-    /// A lambda compiled to an expression tree is translated, not run: EF Core turns a member access
-    /// on a null navigation into a null in SQL, so nullable dereference warnings there are noise.
+    /// An EF query lambda is translated to SQL, not run: a member access on a null navigation becomes
+    /// a null, so nullable dereference warnings there are noise. Other expression trees (Moq matchers,
+    /// compiled expressions) do run, so they keep their warnings.
     /// </summary>
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class ExpressionTreeNullableSuppressor : DiagnosticSuppressor
@@ -21,7 +22,7 @@ namespace NosCore.Analyzers.Analyzers
 
         public override void ReportSuppressions(SuppressionAnalysisContext context)
         {
-            var lambdaExpression = context.Compilation.GetTypeByMetadataName("System.Linq.Expressions.LambdaExpression");
+            var efQuery = new EfQueryLambda(context.Compilation);
             foreach (var diagnostic in context.ReportedDiagnostics)
             {
                 var tree = diagnostic.Location.SourceTree;
@@ -31,7 +32,7 @@ namespace NosCore.Analyzers.Analyzers
                 }
 
                 var node = tree.GetRoot(context.CancellationToken).FindNode(diagnostic.Location.SourceSpan, getInnermostNodeForTie: true);
-                if (ExpressionTreeLambda.IsInside(node, context.GetSemanticModel(tree), lambdaExpression))
+                if (efQuery.IsInside(node, context.GetSemanticModel(tree)))
                 {
                     context.ReportSuppression(Suppression.Create(Suppressions.First(s => s.SuppressedDiagnosticId == diagnostic.Id), diagnostic));
                 }
@@ -41,6 +42,6 @@ namespace NosCore.Analyzers.Analyzers
         private static SuppressionDescriptor Describe(string diagnosticId) => new(
             "NosCoreExpressionTreeNullable" + diagnosticId,
             diagnosticId,
-            "Expression trees are translated rather than executed, so a null along a member chain cannot throw.");
+            "EF translates query lambdas to SQL rather than running them, so a null along a member chain cannot throw.");
     }
 }
