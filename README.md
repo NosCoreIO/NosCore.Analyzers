@@ -11,13 +11,25 @@
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square"/></a>
 </p>
 
-Roslyn analyzers and diagnostic suppressors that every NosCore repository builds with. They turn the project's
-conventions into build errors, and silence nullable warnings where the framework guarantees the value.
+Roslyn analyzers and diagnostic suppressors that every NosCore repository builds with. They report breaks of the
+project's conventions, and silence nullable warnings where the framework fills the value.
 
 ## Install
 
 ```bash
 dotnet add package NosCore.Analyzers
+```
+
+`NosCoreAnalyzers` is an error. The other rules are warnings, so they fail the build only with
+`TreatWarningsAsErrors`, which NosCore turns on.
+
+`NosCoreLogArguments` checks the messages read through an `ILogLanguageLocalizer<T>` indexer. It reads their text from
+the neutral `.resx` files the project passes as `AdditionalFiles`; without them the rule does not run:
+
+```xml
+<ItemGroup>
+  <AdditionalFiles Include="Resource/*.resx" />
+</ItemGroup>
 ```
 
 ## Rules
@@ -34,8 +46,8 @@ dotnet add package NosCore.Analyzers
 | Suppresses | When |
 |---|---|
 | `CS8602`, `CS8604`, `CS8629` | Inside an Entity Framework query lambda, which is translated to SQL rather than run |
-| `CS8618` | A required navigation on an Entity Framework entity, which EF fills when it loads the entity |
-| `CS8618` | A member of an MSTest class that one of the class's methods assigns before the tests read it |
+| `CS8618` | A required navigation on an Entity Framework entity; it is still null unless the query loads the related data |
+| `CS8618` | A member of an MSTest class that one of the class's methods assigns |
 
 ## Building
 
