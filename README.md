@@ -21,7 +21,7 @@ dotnet add package NosCore.Analyzers
 ```
 
 `NosCoreAnalyzers` is an error. The other rules are warnings, so they fail the build only with
-`TreatWarningsAsErrors`, which NosCore turns on.
+`TreatWarningsAsErrors` (which NosCore turns on) or a `WarningsAsErrors` entry that names them.
 
 `NosCoreLogArguments` checks the messages read through an `ILogLanguageLocalizer<T>` indexer. It reads their text from
 the neutral `.resx` files the project passes as `AdditionalFiles`; without them the rule does not run:
