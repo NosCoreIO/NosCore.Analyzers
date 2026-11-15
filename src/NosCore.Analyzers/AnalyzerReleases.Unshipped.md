@@ -6,6 +6,7 @@ Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
 NosCoreConfigureAwait | Style | Warning | ConfigureAwaitAnalyzer
 NosCoreDateTimeNow | Reliability | Warning | DateTimeNowAnalyzer
+NosCoreIgnoredDaoResult | Reliability | Warning | IgnoredDaoResultAnalyzer
 NosCoreLogArguments | Usage | Warning | LogLanguageArgumentsAnalyzer
 NosCoreLogLiteral | Localization | Warning | LogLiteralAnalyzer
 NosCoreNullForgiving | Reliability | Warning | NullForgivingAnalyzer
