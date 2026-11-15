@@ -40,6 +40,7 @@ the neutral `.resx` files the project passes as `AdditionalFiles`; without them 
 | `NosCoreLogArguments` | A log message given a different number of arguments than its text has placeholders |
 | `NosCoreDateTimeNow` | Reading the system clock directly instead of through an injected NodaTime `IClock` |
 | `NosCoreNullForgiving` | The null-forgiving operator `!` |
+| `NosCoreSharedRandom` | Rolling on `Random.Shared`, a new `Random` or `RandomHelper.Instance` instead of an injected random source |
 
 ## Suppressors
 
