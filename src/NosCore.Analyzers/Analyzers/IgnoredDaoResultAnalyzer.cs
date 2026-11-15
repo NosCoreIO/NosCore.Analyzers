@@ -55,7 +55,8 @@ namespace NosCore.Analyzers.Analyzers
                 return;
             }
 
-            if (!IsDaoMethod(invocation.TargetMethod, dao))
+            if (!IsDaoMethod(invocation.TargetMethod, invocation.TargetMethod.ContainingType, dao)
+                && !(invocation.Instance?.Type is INamedTypeSymbol receiver && IsDaoMethod(invocation.TargetMethod, receiver, dao)))
             {
                 return;
             }
@@ -63,9 +64,10 @@ namespace NosCore.Analyzers.Analyzers
             context.ReportDiagnostic(Diagnostic.Create(Rule, invocation.Syntax.GetLocation(), invocation.TargetMethod.Name));
         }
 
-        private static bool IsDaoMethod(IMethodSymbol method, INamedTypeSymbol dao)
+        // The receiver counts too: a class can take its IDao methods from a base class that does
+        // not implement the interface itself.
+        private static bool IsDaoMethod(IMethodSymbol method, INamedTypeSymbol type, INamedTypeSymbol dao)
         {
-            var type = method.ContainingType;
             if (SymbolEqualityComparer.Default.Equals(type.OriginalDefinition, dao))
             {
                 return true;

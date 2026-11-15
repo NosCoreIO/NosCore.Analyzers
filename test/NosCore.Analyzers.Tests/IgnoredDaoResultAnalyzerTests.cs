@@ -23,10 +23,19 @@ public class Store : IDao<Row, int>
     public bool TryOther() => true;
 }}
 
+public class BaseStore
+{{
+    public Task<Row?> TryDeleteAsync(int key) => Task.FromResult<Row?>(null);
+    public Task<bool> TryInsertOrUpdateAsync(IEnumerable<Row> rows) => Task.FromResult(true);
+}}
+
+public class DerivedStore : BaseStore, IDao<Row, int> {{ }}
+
 public class Program
 {{
     private readonly IDao<Row, int> _dao = new Store();
     private readonly Store _store = new Store();
+    private readonly DerivedStore _derived = new DerivedStore();
 
     public async Task RunAsync()
     {{
@@ -47,6 +56,7 @@ namespace NosCore.Dao.Interfaces
         [DataRow("await _dao.TryInsertOrUpdateAsync(new List<Row>());", "_dao.TryInsertOrUpdateAsync(new List<Row>())", "TryInsertOrUpdateAsync")]
         [DataRow("await _dao.TryDeleteAsync(1);", "_dao.TryDeleteAsync(1)", "TryDeleteAsync")]
         [DataRow("await _store.TryDeleteAsync(1);", "_store.TryDeleteAsync(1)", "TryDeleteAsync")]
+        [DataRow("await _derived.TryDeleteAsync(1);", "_derived.TryDeleteAsync(1)", "TryDeleteAsync")]
         [DataRow("_dao.TryDeleteAsync(1).Wait();", null, null)]
         public async Task AnIgnoredWriteIsReported(string statement, string? invocation, string? method)
         {
@@ -57,7 +67,7 @@ namespace NosCore.Dao.Interfaces
             }
 
             var column = 9 + statement.IndexOf(invocation);
-            var expected = VerifyCS.Diagnostic().WithSpan(23, column, 23, column + invocation.Length).WithArguments(method!);
+            var expected = VerifyCS.Diagnostic().WithSpan(32, column, 32, column + invocation.Length).WithArguments(method!);
             await VerifyCS.VerifyAnalyzerAsync(string.Format(Source, statement), expected);
         }
 
