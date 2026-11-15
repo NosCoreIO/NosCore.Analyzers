@@ -28,6 +28,8 @@ namespace NosCore.Analyzers.Analyzers
                     .Any(part => part.Text.ConstantValue.Value is string text && text.Any(char.IsLetter)),
                 IBinaryOperation { OperatorKind: BinaryOperatorKind.Add } binary when binary.Type?.SpecialType == SpecialType.System_String
                     => IsWrittenText(binary.LeftOperand) || IsWrittenText(binary.RightOperand),
+                IConditionalOperation conditional => IsWrittenText(conditional.WhenTrue) || (conditional.WhenFalse != null && IsWrittenText(conditional.WhenFalse)),
+                ICoalesceOperation coalesce => IsWrittenText(coalesce.Value) || IsWrittenText(coalesce.WhenNull),
                 _ => false,
             };
         }

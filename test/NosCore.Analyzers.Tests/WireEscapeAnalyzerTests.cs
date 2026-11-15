@@ -18,6 +18,8 @@ public class Program
         [DataRow("text.Replace(' ', '^')", "^")]
         [DataRow("text.Replace(\" \", \"^\")", "^")]
         [DataRow("text.Replace(' ', '|')", "|")]
+        [DataRow("text.Replace(newChar: '^', oldChar: ' ')", "^")]
+        [DataRow("text.Replace((char)32, (char)94)", "^")]
         public async Task EscapingSpacesForTheWireIsReported(string expression, string escape)
         {
             var expected = VerifyCS.Diagnostic().WithSpan(4, 39, 4, 39 + expression.Length).WithArguments(escape);
@@ -29,6 +31,7 @@ public class Program
         [DataRow("text.Replace('^', ' ')")]
         [DataRow("text.Replace(\"a\", \"^\")")]
         [DataRow("text.Replace(\" \", text)")]
+        [DataRow("text.Replace(newChar: ' ', oldChar: '^')")]
         public async Task OtherReplacementsAreNotReported(string expression)
         {
             await VerifyCS.VerifyAnalyzerAsync(string.Format(Source, expression));

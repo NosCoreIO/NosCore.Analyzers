@@ -41,6 +41,7 @@ public class Program
         [DataRow("\"0 1 2 3 5 9\"")]
         [DataRow("\"say carries the player's text, and -1 without one\"")]
         [DataRow("\"walk 1 2 3\"")]
+        [DataRow("$\"say {\"hello\"} {\"everyone\"}\"")]
         public async Task OtherStringsAreNotReported(string expression)
         {
             await VerifyCS.VerifyAnalyzerAsync(string.Format(Source, expression));

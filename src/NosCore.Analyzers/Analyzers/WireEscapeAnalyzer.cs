@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
@@ -37,8 +38,8 @@ namespace NosCore.Analyzers.Analyzers
                 return;
             }
 
-            var from = TextHelper.Unwrap(invocation.Arguments[0].Value).ConstantValue;
-            var to = TextHelper.Unwrap(invocation.Arguments[1].Value).ConstantValue;
+            var from = ConstantOf(invocation, 0);
+            var to = ConstantOf(invocation, 1);
             if (!from.HasValue || !to.HasValue || from.Value?.ToString() != " ")
             {
                 return;
@@ -49,6 +50,17 @@ namespace NosCore.Analyzers.Analyzers
             {
                 context.ReportDiagnostic(Diagnostic.Create(Rule, invocation.Syntax.GetLocation(), escape));
             }
+        }
+
+        private static Optional<object?> ConstantOf(IInvocationOperation invocation, int ordinal)
+        {
+            var value = invocation.Arguments.FirstOrDefault(argument => argument.Parameter?.Ordinal == ordinal)?.Value;
+            if (value == null)
+            {
+                return default;
+            }
+
+            return value.ConstantValue.HasValue ? value.ConstantValue : TextHelper.Unwrap(value).ConstantValue;
         }
     }
 }

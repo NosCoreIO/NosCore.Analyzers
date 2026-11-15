@@ -99,7 +99,13 @@ namespace NosCore.Analyzers.Analyzers
             var text = new StringBuilder();
             foreach (var content in ((InterpolatedStringExpressionSyntax)context.Node).Contents)
             {
-                text.Append(content is InterpolatedStringTextSyntax part ? part.TextToken.ValueText : "0");
+                text.Append(content switch
+                {
+                    InterpolatedStringTextSyntax part => part.TextToken.ValueText,
+                    InterpolationSyntax hole when context.SemanticModel.GetConstantValue(hole.Expression, context.CancellationToken) is { HasValue: true } constant
+                        => constant.Value?.ToString() ?? string.Empty,
+                    _ => "0",
+                });
             }
 
             Report(context, text.ToString(), headers);

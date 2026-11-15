@@ -26,6 +26,7 @@ public class Program
         [DataTestMethod]
         [DataRow("new NosCore.Packets.ServerPackets.Chats.SayPacket { Message = \"Welcome\" }", "\"Welcome\"")]
         [DataRow("new NosCore.Packets.ServerPackets.Chats.SayPacket { Message = $\"Hello {name}\" }", "$\"Hello {name}\"")]
+        [DataRow("new NosCore.Packets.ServerPackets.Chats.SayPacket { Message = name.Length > 0 ? name : \"Welcome\" }", "name.Length > 0 ? name : \"Welcome\"")]
         public async Task WrittenTextIsReported(string expression, string value)
         {
             var column = 39 + expression.IndexOf(value);
@@ -35,6 +36,7 @@ public class Program
 
         [DataTestMethod]
         [DataRow("new NosCore.Packets.ServerPackets.Chats.SayPacket { Message = name }")]
+        [DataRow("new NosCore.Packets.ServerPackets.Chats.SayPacket { Message = name.Length > 0 ? name : \"-\" }")]
         [DataRow("new NosCore.Packets.ServerPackets.Chats.SayPacket { Message = $\"[{name}]:{name}\" }")]
         [DataRow("new NosCore.Packets.ServerPackets.Chats.SayPacket { Name = \"Buddy\" }")]
         [DataRow("new NosCore.Packets.ClientPackets.Chats.ClientSayPacket { Message = \"Hello\" }")]

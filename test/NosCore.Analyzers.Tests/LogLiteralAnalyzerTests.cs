@@ -36,6 +36,7 @@ public class Program
         [DataRow("logger.LogError(exception, \"Arena failed\")", "\"Arena failed\"", "LogError")]
         [DataRow("logger.LogInformation($\"{key} [Y/n]\")", "$\"{key} [Y/n]\"", "LogInformation")]
         [DataRow("logger.LogInformation(\"Player \" + id)", "\"Player \" + id", "LogInformation")]
+        [DataRow("logger.LogInformation(id > 0 ? \"Player found\" : key)", "id > 0 ? \"Player found\" : key", "LogInformation")]
         public async Task WrittenTextIsReported(string statement, string message, string method)
         {
             var column = 9 + statement.IndexOf(message);
@@ -49,6 +50,7 @@ public class Program
         [DataRow("logger.LogError(exception, key)")]
         [DataRow("logger.LogInformation($\"{key}: {id}\")")]
         [DataRow("logger.LogInformation(\"\")")]
+        [DataRow("logger.LogInformation(id > 0 ? key : key + \":\")")]
         public async Task KeysAndSeparatorsAreNotReported(string statement)
         {
             await VerifyCS.VerifyAnalyzerAsync(string.Format(Source, statement));
