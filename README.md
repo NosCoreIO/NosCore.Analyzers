@@ -41,6 +41,11 @@ the neutral `.resx` files the project passes as `AdditionalFiles`; without them 
 | `NosCoreDateTimeNow` | Reading the system clock directly instead of through an injected NodaTime `IClock` |
 | `NosCoreNullForgiving` | The null-forgiving operator `!` |
 | `NosCoreSharedRandom` | Rolling on `Random.Shared`, a new `Random` or `RandomHelper.Instance` instead of an injected random source |
+| `NosCoreConfigureAwait` | `ConfigureAwait`, which does nothing in a generic-host app |
+| `NosCoreLogLiteral` | A log message written in code instead of read from a `LogLanguageKey` |
+| `NosCorePlayerText` | Text written in code given to a server packet's `Message`, `Question`, `Title` or `Body` |
+| `NosCoreWireEscape` | Replacing spaces with `^` or `\|` by hand instead of marking the packet property `EscapeSpaces` |
+| `NosCorePacketText` | A string that is a packet line, starting with a known header and followed by mostly numeric fields |
 
 ## Suppressors
 
