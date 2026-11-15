@@ -17,7 +17,7 @@ namespace NosCore.Analyzers.Analyzers
             "Reliability",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
-            description: "Code that reads the clock through DateTime or DateTimeOffset cannot be tested with a fake clock.");
+            description: "Code that reads the clock through DateTime, DateTimeOffset or NodaTime's SystemClock cannot be tested with a fake clock.");
 
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
 
@@ -29,11 +29,13 @@ namespace NosCore.Analyzers.Analyzers
             {
                 var dateTime = start.Compilation.GetTypeByMetadataName("System.DateTime");
                 var dateTimeOffset = start.Compilation.GetTypeByMetadataName("System.DateTimeOffset");
-                start.RegisterOperationAction(operation => Analyze(operation, dateTime, dateTimeOffset), OperationKind.PropertyReference);
+                var systemClock = start.Compilation.GetTypeByMetadataName("NodaTime.SystemClock");
+                start.RegisterOperationAction(operation => Analyze(operation, dateTime, dateTimeOffset, systemClock), OperationKind.PropertyReference);
             });
         }
 
-        private static void Analyze(OperationAnalysisContext context, INamedTypeSymbol? dateTime, INamedTypeSymbol? dateTimeOffset)
+        private static void Analyze(OperationAnalysisContext context, INamedTypeSymbol? dateTime, INamedTypeSymbol? dateTimeOffset,
+            INamedTypeSymbol? systemClock)
         {
             for (var parent = context.Operation.Parent; parent != null; parent = parent.Parent)
             {
@@ -44,13 +46,17 @@ namespace NosCore.Analyzers.Analyzers
             }
 
             var property = ((IPropertyReferenceOperation)context.Operation).Property;
-            if (!property.IsStatic || property.Name is not ("Now" or "UtcNow" or "Today"))
+            if (!property.IsStatic)
             {
                 return;
             }
 
             var type = property.ContainingType;
-            if (!SymbolEqualityComparer.Default.Equals(type, dateTime) && !SymbolEqualityComparer.Default.Equals(type, dateTimeOffset))
+            var readsTheClock = SymbolEqualityComparer.Default.Equals(type, systemClock)
+                ? property.Name == "Instance"
+                : (SymbolEqualityComparer.Default.Equals(type, dateTime) || SymbolEqualityComparer.Default.Equals(type, dateTimeOffset))
+                  && property.Name is "Now" or "UtcNow" or "Today";
+            if (!readsTheClock)
             {
                 return;
             }

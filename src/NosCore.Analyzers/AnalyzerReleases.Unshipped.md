@@ -7,3 +7,4 @@ Rule ID | Category | Severity | Notes
 NosCoreDateTimeNow | Reliability | Warning | DateTimeNowAnalyzer
 NosCoreLogArguments | Usage | Warning | LogLanguageArgumentsAnalyzer
 NosCoreNullForgiving | Reliability | Warning | NullForgivingAnalyzer
+NosCoreSharedRandom | Reliability | Warning | SharedRandomAnalyzer
