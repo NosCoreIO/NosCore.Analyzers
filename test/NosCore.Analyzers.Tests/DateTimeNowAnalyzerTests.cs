@@ -28,6 +28,20 @@ public class Program
             await VerifyCS.VerifyAnalyzerAsync(string.Format(Source, expression), expected);
         }
 
+        [TestMethod]
+        public async Task ReadingNodaTimesSystemClockIsReported()
+        {
+            const string source = @"
+namespace NodaTime { public sealed class SystemClock { public static SystemClock Instance => null; } }
+
+public class Program
+{
+    public object Read() => NodaTime.SystemClock.Instance;
+}";
+            var expected = VerifyCS.Diagnostic().WithSpan(6, 29, 6, 58).WithArguments("SystemClock", "Instance");
+            await VerifyCS.VerifyAnalyzerAsync(source, expected);
+        }
+
         [DataTestMethod]
         [DataRow("DateTime.MinValue")]
         [DataRow("new DateTime(2020, 1, 1).Date")]
